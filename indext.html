@@ -1,0 +1,800 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI LÀ TRIỆU PHÚ - HỆ THỐNG TÀI CHÍNH VIỆT NAM (NHÓM 6)</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700;900&display=swap');
+        body {
+            font-family: 'Montserrat', sans-serif;
+            background-color: #030712;
+            color: #ffffff;
+            overflow-x: hidden;
+            user-select: none;
+        }
+
+        .stage-bg {
+            background: radial-gradient(circle at center, #1e1b4b 0%, #0f172a 60%, #030712 100%);
+        }
+
+        .gold-glow {
+            box-shadow: 0 0 25px rgba(234, 179, 8, 0.4);
+        }
+
+        .question-box {
+            background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+            border: 2px solid #3b82f6;
+            clip-path: polygon(20px 0, calc(100% - 20px) 0, 100% 50%, calc(100% - 20px) 100%, 20px 100%, 0 50%);
+        }
+
+        .option-btn {
+            background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+            border: 2px solid #3b82f6;
+            clip-path: polygon(15px 0, calc(100% - 15px) 0, 100% 50%, calc(100% - 15px) 100%, 15px 100%, 0 50%);
+            transition: all 0.2s ease;
+        }
+
+        .option-btn:hover:not(:disabled) {
+            background: linear-gradient(135deg, #1d4ed8 0%, #1e40af 100%);
+            border-color: #fbbf24;
+            transform: scale(1.02);
+            box-shadow: 0 0 15px rgba(251, 191, 36, 0.5);
+        }
+
+        .option-btn.selected {
+            background: linear-gradient(135deg, #d97706 0%, #b45309 100%) !important;
+            border-color: #fef08a !important;
+            animation: pulse-gold 0.6s infinite alternate;
+        }
+
+        .option-btn.correct {
+            background: linear-gradient(135deg, #15803d 0%, #166534 100%) !important;
+            border-color: #4ade80 !important;
+            box-shadow: 0 0 25px #22c55e !important;
+        }
+
+        .option-btn.wrong-eliminated {
+            background: linear-gradient(135deg, #450a0a 0%, #180505 100%) !important;
+            border-color: #ef4444 !important;
+            opacity: 0.35;
+            cursor: not-allowed;
+            text-decoration: line-through;
+        }
+
+        @keyframes pulse-gold {
+            0% { box-shadow: 0 0 10px #f59e0b; }
+            100% { box-shadow: 0 0 25px #fbbf24; }
+        }
+
+        .timer-ring {
+            box-shadow: 0 0 20px rgba(239, 68, 68, 0.6);
+            animation: timer-beat 1s infinite;
+        }
+
+        @keyframes timer-beat {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+        }
+
+        #canvas-fireworks {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            pointer-events: none;
+            z-index: 100;
+        }
+    </style>
+</head>
+<body class="stage-bg min-h-screen flex flex-col justify-between items-center relative overflow-hidden">
+
+    <canvas id="canvas-fireworks"></canvas>
+
+    <!-- Header / Control Bar -->
+    <header class="w-full max-w-6xl px-6 py-4 flex justify-between items-center z-10 border-b border-slate-800/80">
+        <div class="flex items-center space-x-3">
+            <div class="w-10 h-10 rounded-full bg-blue-600/30 border border-blue-400 flex items-center justify-center font-black text-amber-400 text-xl">
+                6
+            </div>
+            <div>
+                <h1 class="text-xs uppercase tracking-widest text-blue-400 font-semibold">Chương trình Gameshow</h1>
+                <p class="text-sm font-bold text-white">AI LÀ TRIỆU PHÚ - TÀI CHÍNH VIỆT NAM</p>
+            </div>
+        </div>
+
+        <div class="flex items-center space-x-2">
+            <button onclick="openCustomMusicModal()" class="flex items-center space-x-2 bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 px-4 py-2 rounded-full border border-amber-500/40 transition text-xs font-bold">
+                🎵 Tải Nhạc Custom
+            </button>
+            <button id="btn-sound-toggle" onclick="toggleSound()" class="flex items-center space-x-2 bg-slate-800 hover:bg-slate-700 px-4 py-2 rounded-full border border-slate-600 transition text-xs font-semibold">
+                <span id="sound-icon">🔊</span>
+                <span id="sound-text">Âm thanh: BẬT</span>
+            </button>
+        </div>
+    </header>
+
+    <!-- CUSTOM MUSIC SETTINGS MODAL -->
+    <div id="modal-music" class="hidden fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-4 backdrop-blur-sm">
+        <div class="bg-slate-900 border-2 border-amber-400/80 rounded-2xl max-w-lg w-full p-6 shadow-2xl">
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="text-lg font-bold text-amber-400">🎵 CÀI ĐẶT NHẠC NỀN TÙY CHỈNH</h3>
+                <button onclick="closeCustomMusicModal()" class="text-slate-400 hover:text-white font-bold text-xl">&times;</button>
+            </div>
+            <p class="text-xs text-slate-300 mb-4">
+                Bạn có thể chọn file nhạc MP3 từ máy tính riêng cho từng câu hỏi. Nếu không chọn, trò chơi sẽ dùng âm thanh hồi hộp mặc định.
+            </p>
+
+            <div class="space-y-3 text-xs mb-6">
+                <div class="flex items-center justify-between bg-slate-800/80 p-2.5 rounded border border-slate-700">
+                    <span class="font-bold text-amber-300">Nhạc Câu 1 (5 Triệu):</span>
+                    <input type="file" accept="audio/*" onchange="loadCustomTrack(0, event)" class="text-slate-400 w-48 text-xs">
+                </div>
+                <div class="flex items-center justify-between bg-slate-800/80 p-2.5 rounded border border-slate-700">
+                    <span class="font-bold text-amber-300">Nhạc Câu 2 (10 Triệu):</span>
+                    <input type="file" accept="audio/*" onchange="loadCustomTrack(1, event)" class="text-slate-400 w-48 text-xs">
+                </div>
+                <div class="flex items-center justify-between bg-slate-800/80 p-2.5 rounded border border-slate-700">
+                    <span class="font-bold text-amber-300">Nhạc Câu 3 (20 Triệu):</span>
+                    <input type="file" accept="audio/*" onchange="loadCustomTrack(2, event)" class="text-slate-400 w-48 text-xs">
+                </div>
+                <div class="flex items-center justify-between bg-slate-800/80 p-2.5 rounded border border-slate-700">
+                    <span class="font-bold text-amber-300">Nhạc Câu 4 (50 Triệu):</span>
+                    <input type="file" accept="audio/*" onchange="loadCustomTrack(3, event)" class="text-slate-400 w-48 text-xs">
+                </div>
+                <div class="flex items-center justify-between bg-slate-800/80 p-2.5 rounded border border-slate-700">
+                    <span class="font-bold text-amber-300">Nhạc Câu 5 (100 Triệu):</span>
+                    <input type="file" accept="audio/*" onchange="loadCustomTrack(4, event)" class="text-slate-400 w-48 text-xs">
+                </div>
+            </div>
+
+            <button onclick="closeCustomMusicModal()" class="w-full py-3 bg-amber-500 hover:bg-amber-400 text-slate-950 font-black rounded-xl">
+                LƯU CÀI ĐẶT
+            </button>
+        </div>
+    </div>
+
+    <!-- MAIN CONTENT CONTAINER -->
+    <main class="w-full max-w-5xl px-4 my-auto flex flex-col items-center justify-center z-10">
+
+        <!-- SCREEN 1: WELCOME SCREEN -->
+        <div id="screen-welcome" class="text-center py-6 w-full">
+            <div class="inline-block px-4 py-1 rounded-full bg-blue-900/50 border border-blue-400/40 text-blue-300 text-xs font-semibold tracking-wider uppercase mb-4">
+                Chinh Phục Kiến Thức Tài Chính
+            </div>
+            <h1 class="text-4xl md:text-6xl font-black text-transparent bg-clip-text bg-gradient-to-r from-amber-200 via-amber-400 to-amber-600 tracking-tight mb-2 drop-shadow-md">
+                AI LÀ TRIỆU PHÚ
+            </h1>
+            <p class="text-lg md:text-xl text-slate-300 font-medium mb-6">
+                CHINH PHỤC HỆ THỐNG TÀI CHÍNH VIỆT NAM
+            </p>
+
+            <!-- Card Nhóm 6 -->
+            <div class="max-w-xl mx-auto bg-slate-900/90 border border-blue-500/40 rounded-2xl p-6 mb-6 shadow-2xl backdrop-blur-md">
+                <h2 class="text-amber-400 font-bold uppercase tracking-wider text-sm mb-4">
+                    🎯 ĐẠI DIỆN DỰ THI TỪ NHÓM 6
+                </h2>
+                <div class="grid grid-cols-2 md:grid-cols-3 gap-2 text-slate-300 text-xs font-medium mb-6">
+                    <div class="p-2 rounded bg-slate-800/60 border border-slate-700">Đặng Bảo Ngân</div>
+                    <div class="p-2 rounded bg-slate-800/60 border border-slate-700">Nguyễn Hà My</div>
+                    <div class="p-2 rounded bg-slate-800/60 border border-slate-700">Trần Phương Thảo</div>
+                    <div class="p-2 rounded bg-slate-800/60 border border-slate-700">Đỗ Hải Yến</div>
+                    <div class="p-2 rounded bg-slate-800/60 border border-slate-700">Nguyễn Đình Minh Hiếu</div>
+                    <div id="card-qma" class="p-2 rounded bg-amber-500/20 border border-amber-400 text-amber-300 font-bold">Quách Minh Anh</div>
+                </div>
+
+                <div id="slot-container" class="hidden mb-6 p-4 bg-black/60 rounded-xl border border-amber-500/50">
+                    <p class="text-xs text-slate-400 mb-1">Đang rút thăm thí sinh đại diện...</p>
+                    <p id="slot-name" class="text-2xl font-black text-amber-400 animate-pulse">...</p>
+                </div>
+
+                <button id="btn-draw" onclick="startRaffle()" class="w-full py-4 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-slate-950 font-black text-lg rounded-xl shadow-lg transform transition active:scale-95">
+                    🎲 RÚT THĂM THÍ SINH ĐẠI DIỆN
+                </button>
+            </div>
+        </div>
+
+        <!-- SCREEN 2: GAMEPLAY SCREEN -->
+        <div id="screen-game" class="hidden w-full flex flex-col items-center">
+            
+            <!-- Progress Bar & Prize Track (5M, 10M, 20M, 50M, 100M) -->
+            <div class="w-full max-w-3xl mb-4 flex justify-between items-center bg-slate-900/80 p-3 rounded-2xl border border-slate-800 text-xs font-bold">
+                <div id="step-1" class="px-3 py-1 rounded border border-slate-700 text-slate-400">1: 5 TRIỆU</div>
+                <div id="step-2" class="px-3 py-1 rounded border border-slate-700 text-slate-400">2: 10 TRIỆU</div>
+                <div id="step-3" class="px-3 py-1 rounded border border-slate-700 text-slate-400">3: 20 TRIỆU</div>
+                <div id="step-4" class="px-3 py-1 rounded border border-slate-700 text-slate-400">4: 50 TRIỆU</div>
+                <div id="step-5" class="px-3 py-1 rounded border border-amber-500 text-amber-400 font-black">5: 100 TRIỆU</div>
+            </div>
+
+            <!-- Representative Badge & Timer -->
+            <div class="w-full max-w-3xl flex justify-between items-center mb-6">
+                <div class="flex items-center space-x-2 bg-slate-800/90 border border-blue-400/50 px-4 py-2 rounded-full">
+                    <span class="text-xs text-slate-400">Thí sinh:</span>
+                    <span class="text-sm font-extrabold text-amber-400">Quách Minh Anh</span>
+                </div>
+
+                <!-- 15-SECOND TIMER DISPLAY -->
+                <div class="relative flex items-center justify-center">
+                    <div id="timer-box" class="w-16 h-16 rounded-full bg-slate-900 border-4 border-amber-400 flex items-center justify-center font-black text-2xl text-amber-400 gold-glow">
+                        15
+                    </div>
+                </div>
+            </div>
+
+            <!-- QUESTION BOX -->
+            <div class="w-full max-w-3xl question-box p-6 md:p-8 mb-6 text-center relative shadow-2xl">
+                <div class="text-xs font-bold uppercase tracking-widest text-blue-400 mb-2" id="question-category">
+                    CÂU HỎI 1 (5.000.000 VNĐ)
+                </div>
+                <h2 id="question-text" class="text-lg md:text-2xl font-extrabold text-white leading-relaxed">
+                    Nội dung câu hỏi sẽ hiển thị ở đây?
+                </h2>
+            </div>
+
+            <!-- TIME EXPIRED BANNER -->
+            <div id="time-up-banner" class="hidden mb-4 px-6 py-2 bg-red-600/90 text-white font-bold rounded-full text-xs md:text-sm animate-bounce shadow-lg">
+                ⏱️ HẾT GIỜ SUY NGHĨ! Quách Minh Anh hãy chọn đáp án của bạn ngay!
+            </div>
+
+            <!-- EXPLANATION BANNER (ON WRONG TRY) -->
+            <div id="explanation-box" class="hidden w-full max-w-3xl mb-4 p-4 bg-slate-800/90 border border-amber-400/50 rounded-xl text-center text-sm">
+                <span class="font-bold text-amber-400">💡 Gợi ý giải thích: </span>
+                <span id="explanation-text" class="text-slate-200">...</span>
+            </div>
+
+            <!-- 4 ANSWER OPTIONS GRID -->
+            <div class="w-full max-w-3xl grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                <button id="opt-A" onclick="selectAnswer('A')" class="option-btn p-4 text-left flex items-center space-x-3 text-sm md:text-base font-bold">
+                    <span class="text-amber-400 font-black">A:</span>
+                    <span id="opt-A-text" class="text-slate-100">Đáp án A</span>
+                </button>
+                <button id="opt-B" onclick="selectAnswer('B')" class="option-btn p-4 text-left flex items-center space-x-3 text-sm md:text-base font-bold">
+                    <span class="text-amber-400 font-black">B:</span>
+                    <span id="opt-B-text" class="text-slate-100">Đáp án B</span>
+                </button>
+                <button id="opt-C" onclick="selectAnswer('C')" class="option-btn p-4 text-left flex items-center space-x-3 text-sm md:text-base font-bold">
+                    <span class="text-amber-400 font-black">C:</span>
+                    <span id="opt-C-text" class="text-slate-100">Đáp án C</span>
+                </button>
+                <button id="opt-D" onclick="selectAnswer('D')" class="option-btn p-4 text-left flex items-center space-x-3 text-sm md:text-base font-bold">
+                    <span class="text-amber-400 font-black">D:</span>
+                    <span id="opt-D-text" class="text-slate-100">Đáp án D</span>
+                </button>
+            </div>
+
+        </div>
+
+        <!-- SCREEN 3: GRAND VICTORY SCREEN -->
+        <div id="screen-victory" class="hidden text-center py-8 w-full max-w-3xl">
+            <div class="text-6xl md:text-8xl mb-4 animate-bounce">🏆</div>
+            <h1 class="text-3xl md:text-5xl font-black text-transparent bg-clip-text bg-gradient-to-r from-yellow-300 via-amber-400 to-yellow-500 mb-2">
+                CHÚC MỪNG CHIẾN THẮNG!
+            </h1>
+            <p class="text-xl md:text-2xl text-amber-300 font-extrabold mb-6">
+                QUÁCH MINH ANH ĐÃ GIÀNH PHẦN THƯỞNG 100.000.000 VNĐ!
+            </p>
+
+            <!-- Thank You Card -->
+            <div class="bg-slate-900/90 border-2 border-amber-400/80 rounded-2xl p-6 md:p-8 mb-8 shadow-2xl backdrop-blur-lg">
+                <h3 class="text-lg font-bold text-blue-400 uppercase tracking-widest mb-3">
+                    💌 LỜI CẢM ƠN CHÂN THÀNH TỪ NHÓM 6
+                </h3>
+                <p class="text-slate-200 text-sm md:text-base leading-relaxed mb-6">
+                    Xin cảm ơn Thầy/Cô cùng toàn thể các bạn học sinh đã cổ vũ, đồng hành và hỗ trợ đắc lực giúp đại diện nhóm 6 — <strong class="text-amber-400 font-bold">Quách Minh Anh</strong> xuất sắc chinh phục thử thách <strong class="text-amber-300">"Hệ thống tài chính Việt Nam"</strong> hôm nay!
+                </p>
+
+                <div class="border-t border-slate-800 pt-4">
+                    <p class="text-xs text-slate-400 uppercase font-bold tracking-wider mb-2">Tập thể Nhóm 6 kính chúc Thầy/Cô và các bạn nhiều sức khỏe!</p>
+                    <p class="text-xs text-amber-400/90 font-medium">Đặng Bảo Ngân • Nguyễn Hà My • Quách Minh Anh • Trần Phương Thảo • Đỗ Hải Yến • Nguyễn Đình Minh Hiếu</p>
+                </div>
+            </div>
+
+            <button onclick="restartGame()" class="px-8 py-4 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-black text-lg rounded-full shadow-xl transform transition hover:scale-105">
+                🔄 CHƠI LẠI TỪ ĐẦU
+            </button>
+        </div>
+
+    </main>
+
+    <!-- FOOTER -->
+    <footer class="w-full text-center py-3 text-slate-500 text-xs z-10">
+        AI Là Triệu Phú - Chuyên đề Hệ Thống Tài Chính Việt Nam • Nhóm 6
+    </footer>
+
+    <!-- JAVASCRIPT LOGIC -->
+    <script>
+        // QUESTION DATASET WITH NEW PRIZE SCALE (5M, 10M, 20M, 50M, 100M)
+        const questions = [
+            {
+                category: "CÂU 1 – KHỞI ĐỘNG (5.000.000 VNĐ)",
+                text: "Thị trường chứng khoán Việt Nam chính thức đi vào hoạt động từ năm nào?",
+                options: { A: "1990", B: "1996", C: "2000", D: "2007" },
+                correct: "C",
+                explanation: "Thị trường chứng khoán Việt Nam chính thức hoạt động từ năm 2000, đánh dấu bước phát triển quan trọng của tài chính Việt Nam."
+            },
+            {
+                category: "CÂU 2 – TÀI CHÍNH (10.000.000 VNĐ)",
+                text: "Trong các loại tài sản sau, loại nào thể hiện người sở hữu có quyền sở hữu một phần doanh nghiệp?",
+                options: { A: "Trái phiếu", B: "Cổ phiếu", C: "Tiền gửi ngân hàng", D: "Hợp đồng bảo hiểm" },
+                correct: "B",
+                explanation: "Người mua cổ phiếu trở thành cổ đông sở hữu một phần vốn của doanh nghiệp, còn trái phiếu là quan hệ vay - nợ."
+            },
+            {
+                category: "CÂU 3 – THỬ THÁCH NHANH (20.000.000 VNĐ)",
+                text: "Trong 4 tổ chức dưới đây, tổ chức nào đại diện cho nhóm “tổ chức nhận tiền gửi”?",
+                options: { A: "Bảo Việt Nhân thọ", B: "EVNFinance", C: "Agribank", D: "VinaCapital" },
+                correct: "C",
+                explanation: "Ngân hàng thương mại (Agribank) có chức năng huy động tiền gửi từ cá nhân và tổ chức để cho vay."
+            },
+            {
+                category: "CÂU 4 – TÌNH HUỐNG THỰC TẾ (50.000.000 VNĐ)",
+                text: "Một nhà đầu tư mua cổ phiếu trên HOSE rồi bán lại cho nhà đầu tư khác. Giao dịch này diễn ra chủ yếu trên thị trường nào?",
+                options: { A: "Thị trường sơ cấp", B: "Thị trường thứ cấp", C: "Thị trường tiền tệ", D: "Thị trường bảo hiểm" },
+                correct: "B",
+                explanation: "Thị trường thứ cấp là nơi chứng khoán đã phát hành được mua bán lại giữa các nhà đầu tư."
+            },
+            {
+                category: "CÂU 5 – CÂU QUYẾT ĐỊNH (100.000.000 VNĐ) 🔥",
+                text: "Một ưu điểm của quỹ đầu tư so với việc một cá nhân tự đầu tư là gì?",
+                options: { A: "Luôn đảm bảo có lợi nhuận", B: "Không có rủi ro", C: "Có khả năng đa dạng hóa danh mục đầu tư", D: "Không cần bỏ vốn" },
+                correct: "C",
+                explanation: "Quỹ đầu tư tập hợp vốn để đầu tư vào nhiều tài sản khác nhau, giúp phân tán và giảm thiểu rủi ro."
+            }
+        ];
+
+        // GAME STATE
+        let currentQuestionIdx = 0;
+        let timer = 15;
+        let timerInterval = null;
+        let soundEnabled = true;
+        let isAnsweringLocked = false;
+
+        // CUSTOM AUDIO TRACKS STORAGE
+        const customAudioMap = { 0: null, 1: null, 2: null, 3: null, 4: null };
+        let activeCustomAudioPlayer = null;
+
+        // WEB AUDIO SYNTHESIZER
+        let audioCtx = null;
+        let bgOsc1 = null, bgOsc2 = null, bgGain = null, heartbeatInterval = null;
+
+        function initAudio() {
+            if (!audioCtx) {
+                audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            }
+            if (audioCtx.state === 'suspended') {
+                audioCtx.resume();
+            }
+        }
+
+        function toggleSound() {
+            soundEnabled = !soundEnabled;
+            const icon = document.getElementById('sound-icon');
+            const text = document.getElementById('sound-text');
+            if (soundEnabled) {
+                icon.innerText = "🔊";
+                text.innerText = "Âm thanh: BẬT";
+            } else {
+                icon.innerText = "🔇";
+                text.innerText = "Âm thanh: TẮT";
+                stopSuspenseMusic();
+            }
+        }
+
+        // CUSTOM MUSIC MODAL HANDLERS
+        function openCustomMusicModal() {
+            document.getElementById('modal-music').classList.remove('hidden');
+        }
+
+        function closeCustomMusicModal() {
+            document.getElementById('modal-music').classList.add('hidden');
+        }
+
+        function loadCustomTrack(qIdx, event) {
+            const file = event.target.files[0];
+            if (file) {
+                customAudioMap[qIdx] = URL.createObjectURL(file);
+            }
+        }
+
+        // SUSPENSE MUSIC ENGINE (CUSTOM MP3 OR SYNTH FALLBACK)
+        function startSuspenseMusic() {
+            if (!soundEnabled) return;
+            initAudio();
+            stopSuspenseMusic();
+
+            // Check if user uploaded a custom MP3 for this question
+            const customUrl = customAudioMap[currentQuestionIdx];
+            if (customUrl) {
+                activeCustomAudioPlayer = new Audio(customUrl);
+                activeCustomAudioPlayer.loop = true;
+                activeCustomAudioPlayer.play().catch(e => console.log(e));
+                return;
+            }
+
+            // Otherwise, play Web Audio Synth suspense drone
+            try {
+                bgGain = audioCtx.createGain();
+                bgGain.gain.setValueAtTime(0.08, audioCtx.currentTime);
+
+                bgOsc1 = audioCtx.createOscillator();
+                bgOsc2 = audioCtx.createOscillator();
+
+                bgOsc1.type = 'sawtooth';
+                bgOsc2.type = 'sine';
+
+                bgOsc1.frequency.setValueAtTime(55, audioCtx.currentTime); 
+                bgOsc2.frequency.setValueAtTime(58.27, audioCtx.currentTime); 
+
+                const filter = audioCtx.createBiquadFilter();
+                filter.type = 'lowpass';
+                filter.frequency.setValueAtTime(220, audioCtx.currentTime);
+
+                bgOsc1.connect(filter);
+                bgOsc2.connect(filter);
+                filter.connect(bgGain);
+                bgGain.connect(audioCtx.destination);
+
+                bgOsc1.start();
+                bgOsc2.start();
+
+                heartbeatInterval = setInterval(() => {
+                    if (!soundEnabled) return;
+                    playSubHeartbeat(timer <= 5);
+                }, timer <= 5 ? 500 : 1000);
+
+            } catch (e) {
+                console.log("Audio play error", e);
+            }
+        }
+
+        function playSubHeartbeat(isPanic) {
+            if (!audioCtx || !soundEnabled) return;
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+
+            osc.type = 'sine';
+            osc.frequency.setValueAtTime(isPanic ? 80 : 60, audioCtx.currentTime);
+            osc.frequency.exponentialRampToValueAtTime(30, audioCtx.currentTime + 0.15);
+
+            gain.gain.setValueAtTime(isPanic ? 0.35 : 0.2, audioCtx.currentTime);
+            gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.15);
+
+            osc.connect(gain);
+            gain.connect(audioCtx.destination);
+
+            osc.start();
+            osc.stop(audioCtx.currentTime + 0.16);
+        }
+
+        function stopSuspenseMusic() {
+            if (activeCustomAudioPlayer) {
+                activeCustomAudioPlayer.pause();
+                activeCustomAudioPlayer = null;
+            }
+            if (bgOsc1) { try { bgOsc1.stop(); } catch(e){} bgOsc1 = null; }
+            if (bgOsc2) { try { bgOsc2.stop(); } catch(e){} bgOsc2 = null; }
+            if (heartbeatInterval) { clearInterval(heartbeatInterval); heartbeatInterval = null; }
+        }
+
+        // SOUND EFFECTS
+        function playTickSound(isPanic) {
+            if (!soundEnabled) return;
+            initAudio();
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+
+            osc.type = isPanic ? 'triangle' : 'sine';
+            osc.frequency.setValueAtTime(isPanic ? 880 : 440, audioCtx.currentTime);
+            gain.gain.setValueAtTime(0.12, audioCtx.currentTime);
+            gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.08);
+
+            osc.connect(gain);
+            gain.connect(audioCtx.destination);
+            osc.start();
+            osc.stop(audioCtx.currentTime + 0.09);
+        }
+
+        function playLockInSound() {
+            if (!soundEnabled) return;
+            initAudio();
+            stopSuspenseMusic();
+
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+
+            osc.type = 'sawtooth';
+            osc.frequency.setValueAtTime(110, audioCtx.currentTime);
+            osc.frequency.linearRampToValueAtTime(220, audioCtx.currentTime + 1.2);
+
+            gain.gain.setValueAtTime(0.2, audioCtx.currentTime);
+            gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 1.2);
+
+            osc.connect(gain);
+            gain.connect(audioCtx.destination);
+            osc.start();
+            osc.stop(audioCtx.currentTime + 1.2);
+        }
+
+        function playCorrectSound() {
+            if (!soundEnabled) return;
+            initAudio();
+            stopSuspenseMusic();
+
+            const notes = [523.25, 659.25, 783.99, 1046.50];
+            notes.forEach((freq, idx) => {
+                const osc = audioCtx.createOscillator();
+                const gain = audioCtx.createGain();
+
+                osc.type = 'triangle';
+                osc.frequency.setValueAtTime(freq, audioCtx.currentTime + idx * 0.1);
+
+                gain.gain.setValueAtTime(0.25, audioCtx.currentTime + idx * 0.1);
+                gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + idx * 0.1 + 0.6);
+
+                osc.connect(gain);
+                gain.connect(audioCtx.destination);
+
+                osc.start(audioCtx.currentTime + idx * 0.1);
+                osc.stop(audioCtx.currentTime + idx * 0.1 + 0.7);
+            });
+        }
+
+        function playWrongSound() {
+            if (!soundEnabled) return;
+            initAudio();
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+
+            osc.type = 'sawtooth';
+            osc.frequency.setValueAtTime(180, audioCtx.currentTime);
+            osc.frequency.linearRampToValueAtTime(90, audioCtx.currentTime + 0.4);
+
+            gain.gain.setValueAtTime(0.2, audioCtx.currentTime);
+            gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.4);
+
+            osc.connect(gain);
+            gain.connect(audioCtx.destination);
+            osc.start();
+            osc.stop(audioCtx.currentTime + 0.4);
+        }
+
+        // RAFFLE WHEEL LOGIC (RIGGED FOR QUÁCH MINH ANH)
+        function startRaffle() {
+            initAudio();
+            const names = ["Đặng Bảo Ngân", "Nguyễn Hà My", "Trần Phương Thảo", "Đỗ Hải Yến", "Nguyễn Đình Minh Hiếu", "Quách Minh Anh"];
+            const btn = document.getElementById('btn-draw');
+            const slotContainer = document.getElementById('slot-container');
+            const slotName = document.getElementById('slot-name');
+
+            btn.disabled = true;
+            btn.classList.add('opacity-50', 'cursor-not-allowed');
+            slotContainer.classList.remove('hidden');
+
+            let counter = 0;
+            let speed = 60;
+
+            function spin() {
+                slotName.innerText = names[counter % names.length];
+                playTickSound(false);
+                counter++;
+
+                if (counter > 25 && names[(counter - 1) % names.length] === "Quách Minh Anh") {
+                    slotName.innerText = "🎯 QUÁCH MINH ANH 🎯";
+                    slotName.classList.remove('animate-pulse');
+                    slotName.classList.add('text-amber-300', 'scale-110');
+                    playCorrectSound();
+
+                    setTimeout(() => {
+                        document.getElementById('screen-welcome').classList.add('hidden');
+                        document.getElementById('screen-game').classList.remove('hidden');
+                        loadQuestion(0);
+                    }, 1800);
+                } else {
+                    setTimeout(spin, speed + counter * 8);
+                }
+            }
+            spin();
+        }
+
+        // GAMEPLAY ENGINE
+        function loadQuestion(index) {
+            currentQuestionIdx = index;
+            isAnsweringLocked = false;
+            const q = questions[index];
+
+            for (let i = 1; i <= 5; i++) {
+                const step = document.getElementById(`step-${i}`);
+                if (i - 1 === index) {
+                    step.className = "px-3 py-1 rounded bg-amber-500 text-slate-950 font-black gold-glow";
+                } else if (i - 1 < index) {
+                    step.className = "px-3 py-1 rounded bg-green-700/80 text-white font-bold";
+                } else {
+                    step.className = "px-3 py-1 rounded border border-slate-700 text-slate-400";
+                }
+            }
+
+            document.getElementById('question-category').innerText = q.category;
+            document.getElementById('question-text').innerText = q.text;
+            document.getElementById('explanation-box').classList.add('hidden');
+            document.getElementById('time-up-banner').classList.add('hidden');
+
+            ['A', 'B', 'C', 'D'].forEach(key => {
+                const btn = document.getElementById(`opt-${key}`);
+                const textSpan = document.getElementById(`opt-${key}-text`);
+                btn.className = "option-btn p-4 text-left flex items-center space-x-3 text-sm md:text-base font-bold";
+                btn.disabled = false;
+                textSpan.innerText = q.options[key];
+            });
+
+            startTimer();
+            startSuspenseMusic();
+        }
+
+        function startTimer() {
+            clearInterval(timerInterval);
+            timer = 15;
+            updateTimerDisplay();
+
+            timerInterval = setInterval(() => {
+                timer--;
+                updateTimerDisplay();
+                if (timer > 0) {
+                    playTickSound(timer <= 5);
+                }
+
+                if (timer === 0) {
+                    clearInterval(timerInterval);
+                    document.getElementById('time-up-banner').classList.remove('hidden');
+                }
+            }, 1000);
+        }
+
+        function updateTimerDisplay() {
+            const box = document.getElementById('timer-box');
+            box.innerText = timer;
+            if (timer <= 5) {
+                box.className = "w-16 h-16 rounded-full bg-red-950 border-4 border-red-500 flex items-center justify-center font-black text-2xl text-red-400 timer-ring";
+            } else {
+                box.className = "w-16 h-16 rounded-full bg-slate-900 border-4 border-amber-400 flex items-center justify-center font-black text-2xl text-amber-400 gold-glow";
+            }
+        }
+
+        function selectAnswer(selectedKey) {
+            if (isAnsweringLocked) return;
+
+            const q = questions[currentQuestionIdx];
+            const btn = document.getElementById(`opt-${selectedKey}`);
+
+            clearInterval(timerInterval);
+            stopSuspenseMusic();
+            playLockInSound();
+
+            btn.classList.add('selected');
+
+            ['A', 'B', 'C', 'D'].forEach(k => {
+                document.getElementById(`opt-${k}`).disabled = true;
+            });
+
+            setTimeout(() => {
+                if (selectedKey === q.correct) {
+                    btn.classList.remove('selected');
+                    btn.classList.add('correct');
+                    playCorrectSound();
+                    triggerFireworks();
+
+                    setTimeout(() => {
+                        if (currentQuestionIdx + 1 < questions.length) {
+                            loadQuestion(currentQuestionIdx + 1);
+                        } else {
+                            showVictoryScreen();
+                        }
+                    }, 2800);
+
+                } else {
+                    btn.classList.remove('selected');
+                    btn.classList.add('wrong-eliminated');
+                    playWrongSound();
+
+                    document.getElementById('explanation-text').innerText = q.explanation;
+                    document.getElementById('explanation-box').classList.remove('hidden');
+
+                    ['A', 'B', 'C', 'D'].forEach(k => {
+                        const optBtn = document.getElementById(`opt-${k}`);
+                        if (!optBtn.classList.contains('wrong-eliminated')) {
+                            optBtn.disabled = false;
+                        }
+                    });
+
+                    startSuspenseMusic();
+                }
+            }, 1400);
+        }
+
+        function showVictoryScreen() {
+            stopSuspenseMusic();
+            clearInterval(timerInterval);
+            playCorrectSound();
+
+            document.getElementById('screen-game').classList.add('hidden');
+            document.getElementById('screen-victory').classList.remove('hidden');
+
+            let fireworkLoops = 0;
+            const victoryTimer = setInterval(() => {
+                triggerFireworks();
+                fireworkLoops++;
+                if (fireworkLoops > 8) clearInterval(victoryTimer);
+            }, 600);
+        }
+
+        function restartGame() {
+            document.getElementById('screen-victory').classList.add('hidden');
+            document.getElementById('screen-welcome').classList.remove('hidden');
+            document.getElementById('btn-draw').disabled = false;
+            document.getElementById('btn-draw').classList.remove('opacity-50', 'cursor-not-allowed');
+            document.getElementById('slot-container').classList.add('hidden');
+        }
+
+        // CANVAS FIREWORKS ENGINE
+        const canvas = document.getElementById('canvas-fireworks');
+        const ctx = canvas.getContext('2d');
+        let particles = [];
+
+        function resizeCanvas() {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+        }
+        window.addEventListener('resize', resizeCanvas);
+        resizeCanvas();
+
+        function triggerFireworks() {
+            const count = 90;
+            const centerX = canvas.width * (0.2 + Math.random() * 0.6);
+            const centerY = canvas.height * (0.2 + Math.random() * 0.4);
+            const colors = ['#f59e0b', '#3b82f6', '#10b981', '#ec4899', '#8b5cf6', '#ffffff'];
+
+            for (let i = 0; i < count; i++) {
+                const angle = Math.random() * Math.PI * 2;
+                const speed = Math.random() * 8 + 2;
+                particles.push({
+                    x: centerX,
+                    y: centerY,
+                    vx: Math.cos(angle) * speed,
+                    vy: Math.sin(angle) * speed,
+                    radius: Math.random() * 3 + 2,
+                    color: colors[Math.floor(Math.random() * colors.length)],
+                    alpha: 1,
+                    decay: Math.random() * 0.02 + 0.015
+                });
+            }
+        }
+
+        function animateFireworks() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            for (let i = particles.length - 1; i >= 0; i--) {
+                const p = particles[i];
+                p.x += p.vx;
+                p.y += p.vy;
+                p.vy += 0.08;
+                p.alpha -= p.decay;
+
+                if (p.alpha <= 0) {
+                    particles.splice(i, 1);
+                } else {
+                    ctx.save();
+                    ctx.globalAlpha = p.alpha;
+                    ctx.beginPath();
+                    ctx.arc(p.x, p.y, p.radius, 0, Math.PI * 2);
+                    ctx.fillStyle = p.color;
+                    ctx.fill();
+                    ctx.restore();
+                }
+            }
+            requestAnimationFrame(animateFireworks);
+        }
+        animateFireworks();
+    </script>
+</body>
+</html>
